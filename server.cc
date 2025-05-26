@@ -125,13 +125,15 @@ void Server::initialize()
     fread(sk2, pqcrystals_kyber512_ref_SECRETKEYBYTES, 1, fp);
     fclose(fp);
 
-    EVN3("Read server secret key from ", SERVER_SK_PATH," as sk2 successfully!\n");
+    EVN3("Read server secret key from ", SERVER_SK_PATH," as sk2 successfully!");
+    printhex(sk2, pqcrystals_kyber512_ref_SECRETKEYBYTES);
 
     fp = fopen(CLIENT_PK_PATH, "rb");
     fread(pk1, pqcrystals_kyber512_ref_PUBLICKEYBYTES, 1, fp);
     fclose(fp);
 
-    EVN3("Read client public key from ", CLIENT_PK_PATH," as pk1 successfully!\n");
+    EVN3("Read client public key from ", CLIENT_PK_PATH," as pk1 successfully!");
+    printhex(pk1,pqcrystals_kyber512_ref_PUBLICKEYBYTES);
 }
 
 void Server::handleMessage(cMessage *msg)

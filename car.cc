@@ -76,13 +76,15 @@ void Car::initialize()
     fread(pk2, pqcrystals_kyber512_PUBLICKEYBYTES, 1, fp);
     fclose(fp);
 
-    EVN3("Read server public key from ", SERVER_PK_PATH, " as pk2 successfully!\n");
+    EVN3("Read server public key from ", SERVER_PK_PATH, " as pk2 successfully!");
+    printhex(pk2, pqcrystals_kyber512_PUBLICKEYBYTES);
 
     fp = fopen(CLIENT_SK_PATH, "rb");
     fread(sk1, pqcrystals_kyber512_SECRETKEYBYTES, 1, fp);
     fclose(fp);
 
-    EVN3("Read client secret key from ", SERVER_PK_PATH," as sk1 successfully!\n");
+    EVN3("Read client secret key from ", SERVER_PK_PATH," as sk1 successfully!");
+    printhex(sk1, pqcrystals_kyber512_SECRETKEYBYTES);
 
     if ( (ret_val = pqcrystals_kyber512_ref_keypair(pk, sk)) != 0) {
         EVN2("Generate pk,sk failed! returned ", ret_val);
