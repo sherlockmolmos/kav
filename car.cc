@@ -157,6 +157,7 @@ void Car::sendRandomData(DataMsg* datamsg) {
 
     datamsg->setTruelen(random_data_len);
     datamsg->setDatalen(random_data_len_to16);
+    datamsg->setSerial(datamsg->getSerial() + 1);
 
     send(datamsg, "out");
 
