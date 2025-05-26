@@ -47,6 +47,8 @@ typedef int SOCKET;
 #define EVN3(s1, s2, s3) EV << (s1) << (s2) << (s3) << "\n"
 #define EVN4(s1, s2, s3, s4) EV << (s1) << (s2) << (s3) << (s4) << "\n"
 #define EVN5(s1, s2, s3, s4, s5) EV << (s1) << (s2) << (s3) << (s4) << (s5) << "\n"
+#define EVN6(s1, s2, s3, s4, s5, s6) EV << (s1) << (s2) << (s3) << (s4) << (s5) << (s6) << "\n"
+#define EVN7(s1, s2, s3, s4, s5, s6, s7) EV << (s1) << (s2) << (s3) << (s4) << (s5) << (s6) << (s7) << "\n"
 
 //char *stringhex(unsigned char *data, size_t len);
 #define EVHEX(data, len) {char *__str = stringhex((unsigned char *)(data), (len)); EVN1(__str); free(__str);}
@@ -108,11 +110,34 @@ class MyCommon: public omnetpp::cSimpleModule
 
     int                 ret_val;
     bool                is_handshake_finish = false;
+  private:
+    char *aes_iv_encrypt_str = NULL;
+    char *aes_iv_decrypt_str = NULL;
   protected:
      // The following redefined virtual function holds the algorithm.
      virtual void initialize() override{}
      virtual void handleMessage(omnetpp::cMessage *msg) override{}
   public:
+     char *get_aes_iv_encrypt_str() {
+         if (aes_iv_encrypt_str) {
+             free(aes_iv_encrypt_str);
+         }
+
+         aes_iv_encrypt_str = stringhex(aes_iv_encrypt, 16);
+
+         return aes_iv_encrypt_str;
+     }
+
+     char *get_aes_iv_decrypt_str() {
+         if (aes_iv_decrypt_str) {
+              free(aes_iv_decrypt_str);
+          }
+
+          aes_iv_decrypt_str = stringhex(aes_iv_decrypt, 16);
+
+          return aes_iv_decrypt_str;
+     }
+
      void printhex(unsigned char *hex, size_t len)
      {
          size_t index = 0;
@@ -146,14 +171,12 @@ class MyCommon: public omnetpp::cSimpleModule
          char randomdatamsg[1024] = {0};
          char *randomdatastring = stringhex((unsigned char*)random_data_plain, random_data_len > 16 ? 16 : random_data_len);
 
-         char *aes_iv_encrypt_str = stringhex(aes_iv_encrypt, 16);
-
          if (random_data_len>16) {
-             sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s%s\n", aes_iv_encrypt_str, random_data_len, randomdatastring, "..........");
+             sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s%s\n", get_aes_iv_encrypt_str(), random_data_len, randomdatastring, "..........");
          }
          else
          {
-             sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s\n", aes_iv_encrypt_str, random_data_len, randomdatastring);
+             sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s\n", get_aes_iv_encrypt_str(), random_data_len, randomdatastring);
          }
 
          free(aes_iv_encrypt_str);
@@ -176,9 +199,15 @@ class MyCommon: public omnetpp::cSimpleModule
 
          aes_128_decrypt((const char*)aes_key, (char*)aes_iv_decrypt, ((char*)get_msg_data(datamsg)) + 8, datamsg->getDatalen(), out);
 
-         EVN5("Received random data len(", datamsg->getTruelen(), " to ", datamsg->getDatalen(), ")");
-
+         EVN7("Received serial ", datamsg->getSerial() ," random data bytes(", datamsg->getTruelen(), " to ", datamsg->getDatalen(), ")");
+         EVN1("Received ciphertext:");
+         printhex(get_msg_data(datamsg) + 8, datamsg->getDatalen());
+         EVN5("\nDecrept by key:(", aes_key_str, ") iv:(", get_aes_iv_decrypt_str(), ")");
+         printhex((unsigned char*)out, datamsg->getDatalen());
+         EVN1("\nRemove the trailing padding 0, get true data:");
          printhex((unsigned char*)out, datamsg->getTruelen());
+         EVN;
+         EVN;
 
          delete[] out;
          free((unsigned char*)(get_msg_data(datamsg)));
@@ -186,6 +215,8 @@ class MyCommon: public omnetpp::cSimpleModule
 
      ~MyCommon(){
         free(aes_key_str);
+        free(aes_iv_encrypt_str);
+        free(aes_iv_decrypt_str);
      };
 };
 
