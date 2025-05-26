@@ -1,10 +1,14 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include "printhex.h"
+#include "api.h"
+
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <omnetpp.h>
 #include "DataMsg_m.h"
 
 #ifdef _WIN32
@@ -50,7 +54,6 @@ typedef int SOCKET;
 #define VFIN(errmsg) throw cRuntimeError((errmsg))
 #define VERR(mainmsg) EVN3(mainmsg, " ", ERRORMSG); VFIN((mainmsg))
 
-
 unsigned char *get_msg_data(DataMsg *msg);
 
 unsigned char *get_msg_data2(DataMsg *msg);
@@ -77,5 +80,113 @@ void random_len_data_encrypt_aes128(int *random_data_len, //true random data len
                                     char **data_encrypted);
 
 void sha256(const unsigned char *k, const unsigned char *k1, const unsigned char *k2, unsigned char *out);
+
+
+class MyCommon: public omnetpp::cSimpleModule
+{
+  public:
+    unsigned char       pk[pqcrystals_kyber512_PUBLICKEYBYTES];
+    unsigned char       sk[pqcrystals_kyber512_SECRETKEYBYTES];
+
+    unsigned char       pk1[pqcrystals_kyber512_PUBLICKEYBYTES];
+    unsigned char       sk1[pqcrystals_kyber512_SECRETKEYBYTES];
+
+    unsigned char       pk2[pqcrystals_kyber512_PUBLICKEYBYTES];
+    unsigned char       sk2[pqcrystals_kyber512_SECRETKEYBYTES];
+
+    unsigned char       k[pqcrystals_kyber512_ref_BYTES];
+    unsigned char       c[pqcrystals_kyber512_CIPHERTEXTBYTES];
+
+    unsigned char       k1[pqcrystals_kyber512_ref_BYTES];
+    unsigned char       c1[pqcrystals_kyber512_CIPHERTEXTBYTES];
+
+    unsigned char       k2[pqcrystals_kyber512_ref_BYTES];
+    unsigned char       c2[pqcrystals_kyber512_CIPHERTEXTBYTES];
+
+    unsigned char       aes_key[16], aes_iv_encrypt[16], aes_iv_decrypt[16];
+    char *aes_key_str;
+
+    int                 ret_val;
+    bool                is_handshake_finish = false;
+  protected:
+     // The following redefined virtual function holds the algorithm.
+     virtual void initialize() override{}
+     virtual void handleMessage(omnetpp::cMessage *msg) override{}
+  public:
+     void printhex(unsigned char *hex, size_t len)
+     {
+         size_t index = 0;
+
+         while (1)
+         {
+             if (len - index >= 32) {
+                 EVHEX(hex +  index, 32);
+                 index += 32;
+             }
+             else {
+                 EVHEX(hex +  index, len - index);
+                 break;
+             }
+         }
+     }
+
+     void sendRandomData(DataMsg* datamsg) {
+         int random_data_len; //true random data len
+         int random_data_len_to16; // 16-256 , 16 multi
+
+         char *random_data_plain;
+         char *random_data_encryped_lenprefix;
+
+         random_len_data_encrypt_aes128(&random_data_len, &random_data_len_to16, (const char*)aes_key, (char*)aes_iv_encrypt,
+                                          &random_data_plain, &random_data_encryped_lenprefix);
+
+         EVN5("Sent Random data len(", random_data_len, " to ", random_data_len_to16, ")");
+         printhex((unsigned char*)random_data_plain, random_data_len);
+
+         char randomdatamsg[1024] = {0};
+         char *randomdatastring = stringhex((unsigned char*)random_data_plain, random_data_len > 16 ? 16 : random_data_len);
+
+         char *aes_iv_encrypt_str = stringhex(aes_iv_encrypt, 16);
+
+         if (random_data_len>16) {
+             sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s%s\n", aes_iv_encrypt_str, random_data_len, randomdatastring, "..........");
+         }
+         else
+         {
+             sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s\n", aes_iv_encrypt_str, random_data_len, randomdatastring);
+         }
+
+         free(aes_iv_encrypt_str);
+         free(randomdatastring);
+
+         datamsg->setName(randomdatamsg);
+         set_msg_data(datamsg, (unsigned char*)random_data_encryped_lenprefix);
+
+         datamsg->setTruelen(random_data_len);
+         datamsg->setDatalen(random_data_len_to16);
+         datamsg->setSerial(datamsg->getSerial() + 1);
+
+         send(datamsg, "out");
+
+         free(random_data_plain);
+     }
+
+     void receiveRandomData(DataMsg* datamsg) {
+         char *out = new char[datamsg->getDatalen()];
+
+         aes_128_decrypt((const char*)aes_key, (char*)aes_iv_decrypt, ((char*)get_msg_data(datamsg)) + 8, datamsg->getDatalen(), out);
+
+         EVN5("Received random data len(", datamsg->getTruelen(), " to ", datamsg->getDatalen(), ")");
+
+         printhex((unsigned char*)out, datamsg->getTruelen());
+
+         delete[] out;
+         free((unsigned char*)(get_msg_data(datamsg)));
+     }
+
+     ~MyCommon(){
+        free(aes_key_str);
+     };
+};
 
 #endif //COMMON_H
