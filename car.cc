@@ -37,6 +37,7 @@ class Car : public cSimpleModule
     unsigned char       c2[pqcrystals_kyber512_CIPHERTEXTBYTES];
 
     unsigned char       aes_key[16], aes_iv_encrypt[16], aes_iv_decrypt[16];
+    char *aes_key_str;
 
     int                 ret_val;
     bool                is_handshake_finish = false;
@@ -48,6 +49,9 @@ class Car : public cSimpleModule
     void printhex(unsigned char *hex, size_t len);
     void sendRandomData(DataMsg* datamsg);
     void receiveRandomData(DataMsg* datamsg);
+    ~Car(){
+        free(aes_key_str);
+    };
 };
 
 // The module class needs to be registered with OMNeT++
@@ -134,15 +138,17 @@ void Car::sendRandomData(DataMsg* datamsg) {
     char randomdatamsg[1024] = {0};
     char *randomdatastring = stringhex((unsigned char*)random_data_plain, random_data_len > 16 ? 16 : random_data_len);
 
+    char *aes_iv_encrypt_str = stringhex(aes_iv_encrypt, 16);
 
     if (random_data_len>16) {
-        sprintf(randomdatamsg, "\nRandom Message (%d bytes)\n %s%s\n", random_data_len, randomdatastring, "..........");
+        sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s%s\n", aes_iv_encrypt_str, random_data_len, randomdatastring, "..........");
     }
     else
     {
-        sprintf(randomdatamsg, "\nRandom Message (%d bytes)\n %s\n", random_data_len, randomdatastring);
+        sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s\n", aes_iv_encrypt_str, random_data_len, randomdatastring);
     }
 
+    free(aes_iv_encrypt_str);
     free(randomdatastring);
 
     datamsg->setName(randomdatamsg);
@@ -215,6 +221,8 @@ void Car::handleMessage(cMessage *msg)
         EVN1("AES IV:");
         EVHEX(aeskeyiv + 16, 16);
         EVN1("\n");
+
+        aes_key_str = stringhex(aes_key, 16);
 
         is_handshake_finish = true;
 

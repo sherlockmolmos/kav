@@ -14,6 +14,7 @@
 // 
 
 packet DataMsg {
+    int serial;
     int truelen;
     int datalen;
     char data[8];
