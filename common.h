@@ -21,14 +21,6 @@
 #define CLIENT_SK_PATH "d:/client.sk"
 
 #else
-typedef int SOCKET;
-
-#define closesocket close
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-
 #include <unistd.h>
 #include <errno.h>
 
@@ -70,11 +62,8 @@ void aes_128_encrypt(const char *aes_key, char *aes_iv, char *data, size_t data_
 
 void aes_128_decrypt(const char *aes_key, char *aes_iv, char *data, size_t data_len, char *out);
 
-void read_nbytes_from_socket(int sockfd, char *buffer, size_t n);
-
-char *read_from_socket_with_bytespefix_then_decrept(int sockfd, char *key, char *iv, int *outlen);
-
-void random_len_data_encrypt_aes128(int *random_data_len, //true random data len
+void random_len_data_encrypt_aes128_without_lenprefix
+                                   (int *random_data_len, //true random data len
                                     int *random_data_len_to16, // 16-256 , 16 multi
                                     const char *aes_key,
                                     char *aes_iv,
@@ -160,10 +149,11 @@ class MyCommon: public omnetpp::cSimpleModule
          int random_data_len_to16; // 16-256 , 16 multi
 
          char *random_data_plain;
-         char *random_data_encryped_lenprefix;
+         char *random_data_encryped;
 
-         random_len_data_encrypt_aes128(&random_data_len, &random_data_len_to16, (const char*)aes_key, (char*)aes_iv_encrypt,
-                                          &random_data_plain, &random_data_encryped_lenprefix);
+         random_len_data_encrypt_aes128_without_lenprefix
+                                         (&random_data_len, &random_data_len_to16, (const char*)aes_key, (char*)aes_iv_encrypt,
+                                          &random_data_plain, &random_data_encryped);
 
          datamsg->setSerial(datamsg->getSerial() + 1);
 
@@ -175,7 +165,7 @@ class MyCommon: public omnetpp::cSimpleModule
          printhex((unsigned char*)random_data_plain, random_data_len_to16);
 
          EVN5("ciphertext encrypt by key:(", aes_key_str, ") iv:(", get_aes_iv_encrypt_str(), ")");
-         printhex((unsigned char*)random_data_encryped_lenprefix + 8, random_data_len_to16);
+         printhex((unsigned char*)random_data_encryped, random_data_len_to16);
 
          EVN;
          EVN;
@@ -194,7 +184,7 @@ class MyCommon: public omnetpp::cSimpleModule
          free(randomdatastring);
 
          datamsg->setName(randomdatamsg);
-         set_msg_data(datamsg, (unsigned char*)random_data_encryped_lenprefix);
+         set_msg_data(datamsg, (unsigned char*)random_data_encryped);
 
          datamsg->setTruelen(random_data_len);
          datamsg->setDatalen(random_data_len_to16);
@@ -207,11 +197,11 @@ class MyCommon: public omnetpp::cSimpleModule
      void receiveRandomData(DataMsg* datamsg) {
          char *out = new char[datamsg->getDatalen()];
 
-         aes_128_decrypt((const char*)aes_key, (char*)aes_iv_decrypt, ((char*)get_msg_data(datamsg)) + 8, datamsg->getDatalen(), out);
+         aes_128_decrypt((const char*)aes_key, (char*)aes_iv_decrypt, ((char*)get_msg_data(datamsg)), datamsg->getDatalen(), out);
 
          EVN7("Received serial ", datamsg->getSerial() ," random data bytes(", datamsg->getTruelen(), " to ", datamsg->getDatalen(), ")");
          EVN1("Received ciphertext:");
-         printhex(get_msg_data(datamsg) + 8, datamsg->getDatalen());
+         printhex(get_msg_data(datamsg), datamsg->getDatalen());
          EVN5("\nDecrept by key:(", aes_key_str, ") iv:(", get_aes_iv_decrypt_str(), ")");
          printhex((unsigned char*)out, datamsg->getDatalen());
          EVN1("\nRemove the trailing padding 0, get true plain data:");

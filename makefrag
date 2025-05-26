@@ -1,6 +1,3 @@
 OMNETPP_LIBS += -lcrypto
 CFLAGS += -DKYBER_K=2
 
-ifeq ($(PLATFORM),win32)
-OMNETPP_LIBS += -lws2_32
-endif

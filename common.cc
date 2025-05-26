@@ -84,53 +84,13 @@ void aes_128_decrypt(const char* aes_key, char* aes_iv, char* data, size_t data_
     AES_cbc_encrypt((const unsigned char*)data, (unsigned char*)out, data_len, &decryptkey, (unsigned char*)aes_iv, AES_DECRYPT);
 }
 
-void read_nbytes_from_socket(int sockfd, char* buffer, size_t n) {
-    size_t readsize, allreadsize = 0;
-
-    while (allreadsize < n && (readsize = recv(sockfd, buffer + allreadsize, n - allreadsize, 0)) > 0) {
-        allreadsize += readsize;
-    }
-
-    printf("out\n");
-}
-
-char* read_from_socket_with_bytespefix_then_decrept(int sockfd, char* key, char* iv, int* outlen) {
-    size_t readsize, allreadsize = 0;
-    int datalen = 264;
-
-    char buffer[264] = { 0 }; // 256 + 8
-
-    while (allreadsize < datalen && (readsize = recv(sockfd, buffer + allreadsize, datalen - allreadsize, 0)) > 0) {
-        //printf("Received: %s\n", buffer);
-        allreadsize += readsize;
-
-        if (allreadsize >= 4) {
-            memcpy(&datalen, buffer, 4);
-
-            if (datalen == 0) {
-                return 0;
-            }
-
-            datalen += 8;
-        }
-        //printf("datelen is %d\n", datalen);
-    }
-
-    memcpy(outlen, buffer + 4, 4);
-
-    char* out = (char*)malloc(datalen - 8);
-
-    aes_128_decrypt(key, iv, buffer + 8, datalen - 8, out);
-
-    return out;
-}
-
-void random_len_data_encrypt_aes128(int* random_data_len, //true random data len
-    int* random_data_len_to16, // 16-256 , 16 multi
-    const char* aes_key,
-    char* aes_iv,
-    char** data_plain,
-    char** data_encrypted) {
+void random_len_data_encrypt_aes128_without_lenprefix(
+            int* random_data_len, //true random data len
+            int* random_data_len_to16, // 16-256 , 16 multi
+            const char* aes_key,
+            char* aes_iv,
+            char** data_plain,
+            char** data_encrypted) {
 
     unsigned char templen;
     randombytes(&templen, 1);
@@ -139,18 +99,15 @@ void random_len_data_encrypt_aes128(int* random_data_len, //true random data len
     *random_data_len_to16 = *random_data_len + 16 - *random_data_len % 16;
 
     char* random_data_plain_to16 = (char*)malloc(*random_data_len_to16);
-    char* random_data_encryped_lenprefix = (char*)malloc(8 + *random_data_len_to16);
+    char* random_data_encryped_to16 = (char*)malloc(*random_data_len_to16);
 
     memset(random_data_plain_to16, 0, *random_data_len_to16);
     randombytes((uint8_t*)random_data_plain_to16, *random_data_len);
 
-    memcpy(random_data_encryped_lenprefix, random_data_len_to16, 4);
-    memcpy(random_data_encryped_lenprefix + 4, random_data_len, 4);
-
-    aes_128_encrypt(aes_key, aes_iv, random_data_plain_to16, *random_data_len_to16, random_data_encryped_lenprefix + 8);
+    aes_128_encrypt(aes_key, aes_iv, random_data_plain_to16, *random_data_len_to16, random_data_encryped_to16);
 
     *data_plain = random_data_plain_to16;
-    *data_encrypted = random_data_encryped_lenprefix;
+    *data_encrypted = random_data_encryped_to16;
 }
 
 
