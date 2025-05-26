@@ -5,3 +5,5 @@
 /out/
 kyber512aes128.exe
 Makefile.*
+DataMsg_m.cc
+DataMsg_m.h
