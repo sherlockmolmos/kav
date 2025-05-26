@@ -36,7 +36,7 @@ class Car : public cSimpleModule
     unsigned char       k2[pqcrystals_kyber512_ref_BYTES];
     unsigned char       c2[pqcrystals_kyber512_CIPHERTEXTBYTES];
 
-    unsigned char       aes_key[16], aes_iv[16];
+    unsigned char       aes_key[16], aes_iv_encrypt[16], aes_iv_decrypt[16];
 
     int                 ret_val;
     bool                is_handshake_finish = false;
@@ -125,7 +125,7 @@ void Car::sendRandomData(DataMsg* datamsg) {
     char *random_data_plain;
     char *random_data_encryped_lenprefix;
 
-    random_len_data_encrypt_aes128(&random_data_len, &random_data_len_to16, (const char*)aes_key, (char*)aes_iv,
+    random_len_data_encrypt_aes128(&random_data_len, &random_data_len_to16, (const char*)aes_key, (char*)aes_iv_encrypt,
                                      &random_data_plain, &random_data_encryped_lenprefix);
 
     EVN5("Sent Random data len(", random_data_len, " to ", random_data_len_to16, ")");
@@ -160,7 +160,7 @@ void Car::sendRandomData(DataMsg* datamsg) {
 void Car::receiveRandomData(DataMsg* datamsg) {
     char *out = new char[datamsg->getDatalen()];
 
-    aes_128_decrypt((const char*)aes_key, (char*)aes_iv, ((char*)get_msg_data(datamsg)) + 8, datamsg->getDatalen(), out);
+    aes_128_decrypt((const char*)aes_key, (char*)aes_iv_decrypt, ((char*)get_msg_data(datamsg)) + 8, datamsg->getDatalen(), out);
 
     EVN5("Received random data len(", datamsg->getTruelen(), " to ", datamsg->getDatalen(), ")");
 
@@ -205,14 +205,15 @@ void Car::handleMessage(cMessage *msg)
         sha256(k, k1, k2, aeskeyiv);
 
         memcpy(aes_key, aeskeyiv, 16);
-        memcpy(aes_iv, aeskeyiv + 16, 16);
+        memcpy(aes_iv_encrypt, aeskeyiv + 16, 16);
+        memcpy(aes_iv_decrypt, aeskeyiv + 16, 16);
 
         EVN1("Hash k k1 k2 by sha3-256, get aes key and iv:");
         EVN1("AES KEY:");
         EVHEX(aes_key, 16);
         EVN;
         EVN1("AES IV:");
-        EVHEX(aes_iv, 16);
+        EVHEX(aeskeyiv + 16, 16);
         EVN1("\n");
 
         is_handshake_finish = true;
