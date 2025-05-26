@@ -191,7 +191,6 @@ class MyCommon: public omnetpp::cSimpleModule
              sprintf(randomdatamsg, "\niv:%s\nRandom Message (%d bytes)\n %s\n", get_aes_iv_encrypt_str(), random_data_len, randomdatastring);
          }
 
-         free(aes_iv_encrypt_str);
          free(randomdatastring);
 
          datamsg->setName(randomdatamsg);
